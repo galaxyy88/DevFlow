@@ -7,13 +7,12 @@ const environmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL é obrigatória."),
-  JWT_SECRET: z.string().min(32, "JWT_SECRET deve ter pelo menos 32 caracteres."),
-  JWT_EXPIRES_IN: z.string().default("1h"),
-  CLIENT_ORIGINS: z.string().default("http://localhost:3000"),
-  RENDER_EXTERNAL_URL: z.preprocess(
-    (value) => value === "" ? undefined : value,
-    z.string().url().optional()
-  ),
+  JWT_SECRET: z.string()
+    .min(32, "JWT_SECRET deve ter pelo menos 32 caracteres.")
+    .refine((secret) => !/^(example-only|replace-with|change-me|your-secret)/i.test(secret), {
+      message: "JWT_SECRET não pode ser um valor de exemplo."
+    }),
+  JWT_EXPIRES_IN: z.enum(["15m", "30m", "1h", "2h", "4h", "8h"]).default("1h"),
   DB_SSL: z.enum(["true", "false"]).default("false")
 });
 
@@ -26,11 +25,5 @@ if (!parsedEnvironment.success) {
 
 export const env = {
   ...parsedEnvironment.data,
-  CLIENT_ORIGINS: parsedEnvironment.data.CLIENT_ORIGINS.split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean)
-    .concat(parsedEnvironment.data.RENDER_EXTERNAL_URL
-      ? [new URL(parsedEnvironment.data.RENDER_EXTERNAL_URL).origin]
-      : []),
   DB_SSL: parsedEnvironment.data.DB_SSL === "true"
 };

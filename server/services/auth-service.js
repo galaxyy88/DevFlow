@@ -9,7 +9,10 @@ const SALT_ROUNDS = 12;
 function createToken(user) {
   return jwt.sign({ version: user.token_version }, env.JWT_SECRET, {
     subject: user.id,
-    expiresIn: env.JWT_EXPIRES_IN
+    expiresIn: env.JWT_EXPIRES_IN,
+    algorithm: "HS256",
+    issuer: "devflow",
+    audience: "devflow"
   });
 }
 

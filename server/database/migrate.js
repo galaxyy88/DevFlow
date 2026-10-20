@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { env } from "../config/env.js";
 import { pool } from "./pool.js";
+import { logSafeError } from "../utils/safe-log.js";
 
 const migrationPath = new URL("./schema.sql", import.meta.url);
 const initialSchemaVersion = "001_initial_schema";
@@ -37,12 +37,13 @@ export async function migrate() {
     await client.query("COMMIT");
     console.log("Migrações do DevFlow verificadas.");
   } catch (error) {
-    await client.query("ROLLBACK");
-
-    if (env.NODE_ENV === "production") {
-      console.error("Falha ao aplicar migrações do DevFlow:", { code: error.code });
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      logSafeError("Falha ao reverter transação de migração.", rollbackError);
     }
 
+    logSafeError("Falha ao aplicar migrações do DevFlow.", error);
     throw error;
   } finally {
     client.release();
@@ -53,11 +54,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   try {
     await migrate();
   } catch (error) {
-    if (env.NODE_ENV === "production") {
-      console.error("Não foi possível aplicar migrações do banco:", { code: error.code });
-    } else {
-      console.error("Não foi possível aplicar migrações do banco:", error);
-    }
+    logSafeError("Não foi possível aplicar migrações do banco.", error);
     process.exitCode = 1;
   } finally {
     await pool.end();

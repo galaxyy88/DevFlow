@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# DevFlow
-=======
 # DevFlow
 
 Plataforma full stack para pequenos times de desenvolvimento organizarem projetos, tarefas e prazos em um só lugar. O projeto mantém frontend, API REST e acesso ao PostgreSQL organizados em módulos fáceis de explicar e evoluir.
@@ -21,13 +18,13 @@ Plataforma full stack para pequenos times de desenvolvimento organizarem projeto
 - Dashboard com indicadores, progresso calculado a partir das tarefas e atividade recente.
 - Interface em português responsiva, com estados vazios, carregamento, erros e confirmações.
 - Paginação nas listagens da API e isolamento dos dados por proprietário.
-- Helmet, CORS configurável, limite de tentativas de autenticação e validação de entrada.
+- Helmet, cabeçalhos de segurança, limite de tentativas de autenticação e validação de entrada.
 
 ## Tecnologias
 
 - HTML5, CSS3 e JavaScript ES modules (ES6+).
 - Node.js 20+, Express 5 e API REST.
-- PostgreSQL, `pg`, `bcrypt`, `jsonwebtoken`, `zod`, `helmet`, `cors`, `express-rate-limit` e `dotenv`.
+- PostgreSQL, `pg`, `bcrypt`, `jsonwebtoken`, `zod`, `helmet`, `express-rate-limit` e `dotenv`.
 - npm, Git, GitHub, Render e Neon PostgreSQL.
 - Docker Compose opcional para desenvolvimento local.
 
@@ -66,7 +63,7 @@ npm ci
 cp .env.example .env
 ```
 
-Edite `.env` localmente: configure `DATABASE_URL`, `POSTGRES_PASSWORD` e um `JWT_SECRET` aleatório com pelo menos 32 caracteres. Para desenvolvimento local, `DB_SSL=false`.
+Edite `.env` localmente: configure `DATABASE_URL`, `POSTGRES_PASSWORD` e um `JWT_SECRET` aleatório com pelo menos 32 caracteres. Escolha `JWT_EXPIRES_IN` entre `15m`, `30m`, `1h`, `2h`, `4h` e `8h`. Para desenvolvimento local, `DB_SSL=false`.
 
 ### PostgreSQL local com Docker Compose
 
@@ -89,13 +86,12 @@ Aguarde o serviço `db` ficar `healthy`. Também é possível instalar PostgreSQ
 | `PORT` | Porta HTTP; padrão local `3000`, fornecida pelo Render em produção |
 | `DATABASE_URL` | URL de conexão PostgreSQL; mantenha-a secreta |
 | `JWT_SECRET` | Segredo para assinatura JWT, mínimo de 32 caracteres |
-| `JWT_EXPIRES_IN` | Validade do token, padrão `1h` |
+| `JWT_EXPIRES_IN` | Validade da sessão: `15m`, `30m`, `1h`, `2h`, `4h` ou `8h` |
 | `DB_SSL` | `true` exige TLS e validação do certificado do PostgreSQL |
-| `CLIENT_ORIGINS` | Origens CORS adicionais, separadas por vírgula |
-| `RENDER_EXTERNAL_URL` | Origem Render, permitida automaticamente para CORS |
 | `POSTGRES_DB` | Nome do banco local no Docker Compose |
 | `POSTGRES_USER` | Usuário PostgreSQL local no Docker Compose |
 | `POSTGRES_PASSWORD` | Senha local do PostgreSQL no Docker Compose |
+| `TEST_DATABASE_URL` | URL exclusiva do banco local descartável de testes, terminada em `_test` |
 
 `.env` e outros arquivos de ambiente ficam fora do Git. `.env.example` só contém valores de exemplo; nunca preencha nele credenciais reais.
 
@@ -104,10 +100,19 @@ Aguarde o serviço `db` ficar `healthy`. Também é possível instalar PostgreSQ
 ```bash
 npm run dev
 npm test
+```
+
+Abra `http://localhost:3000`. `npm start` inicia o servidor de produção e aplica a migração inicial registrada em `schema_migrations`; `npm run db:migrate` pode ser executado separadamente. `GET /health` verifica servidor e banco. `npm test` roda os testes unitários sem banco.
+
+### Banco de testes isolado
+
+Crie um PostgreSQL local descartável chamado `devflow_security_test`, com usuário e senha exclusivos para testes. Configure `TEST_DATABASE_URL` no `.env` para esse banco (não reutilize `DATABASE_URL` de desenvolvimento ou produção). Execute:
+
+```bash
 npm run test:integration
 ```
 
-Abra `http://localhost:3000`. `npm start` inicia o servidor de produção e aplica a migração inicial registrada em `schema_migrations`; `npm run db:migrate` pode ser executado separadamente. `GET /health` verifica servidor e banco. `npm test` roda os testes unitários sem banco; os testes de integração exigem `DATABASE_URL` apontando para um banco PostgreSQL de teste.
+O runner recusa URLs que não sejam locais ou cujo banco não termine em `_test`; as credenciais e os usuários gerados nos testes são fictícios. A suíte não executa em bancos remotos.
 
 ## API
 
@@ -146,16 +151,26 @@ Confira no painel do Neon os limites atuais do plano gratuito: cotas de uso, arm
 
 ### 2. Enviar o código ao GitHub
 
-O projeto ainda não foi publicado em nenhum remoto; o primeiro commit fica apenas no histórico local. Crie um repositório vazio na sua conta do GitHub, sem README nem `.gitignore` preexistentes. Depois confira que o arquivo `.env` não será adicionado e envie a branch local:
+O histórico Git existente deve ser preservado. Para preparar e enviar uma alteração revisada ao repositório GitHub já configurado, confira o estado e confirme que `.env` está ignorado:
 
 ```bash
 git status --short
 git check-ignore .env
-git remote add origin <URL-HTTPS-OU-SSH-DO-SEU-REPOSITORIO>
-git push -u origin main
+git diff --check
 ```
 
-Substitua o placeholder pela URL do repositório que você criou. Este projeto não cria repositório remoto nem envia código automaticamente.
+Revise a lista de arquivos e adicione somente os arquivos pretendidos. Depois confira o conteúdo staged antes de criar e enviar o commit:
+
+```bash
+git add <arquivos-revisados>
+git diff --cached --check
+git diff --cached --stat
+git diff --cached
+git commit -m "chore: prepare DevFlow for public deployment"
+git push origin main
+```
+
+Substitua `<arquivos-revisados>` pelos caminhos que você confirmou; não adicione `.env`. Nunca coloque tokens na URL do remoto nem no histórico do terminal. O repositório não será enviado automaticamente por estes passos.
 
 ### 3. Criar o serviço no Render
 
@@ -164,8 +179,8 @@ Substitua o placeholder pela URL do repositório que você criou. Este projeto n
 3. Revise o `render.yaml` e clique em **Apply**. O Blueprint cria um web service gratuito, instala com `npm ci`, inicia com `npm start` e verifica `/health`.
 4. Na tela de configuração/ambiente, preencha `DATABASE_URL` com a URL copiada do Neon. É uma variável `sync: false`, portanto não está gravada no Blueprint.
 5. Confirme `NODE_ENV=production`, `DB_SSL=true` e o `JWT_SECRET` gerado pelo próprio Render a partir de `generateValue: true`. Nunca compartilhe o valor do segredo.
-6. Salve e inicie o primeiro deploy. O Render fornece automaticamente `PORT` e `RENDER_EXTERNAL_URL`; este último autoriza a origem pública do frontend no CORS. O serviço serve frontend e API pelo mesmo domínio.
-7. O Blueprint usa `autoDeploy: false`: depois de mudanças enviadas ao GitHub, abra o serviço e escolha **Manual Deploy → Deploy latest commit** para publicar explicitamente.
+6. Salve e inicie o primeiro deploy. O Render fornece automaticamente `PORT`. O serviço serve frontend e API pelo mesmo domínio, portanto o CORS fica desativado.
+7. O Blueprint usa `autoDeploy: false`: depois de enviar um commit ao GitHub, abra o serviço no Render e escolha **Manual Deploy → Deploy latest commit** para iniciar o deploy explicitamente. Isso permite revisar o commit antes de publicar.
 
 O Render pode suspender serviços gratuitos inativos e a primeira requisição após a suspensão pode demorar. Confira quotas e limitações atuais de Render e Neon no painel dos provedores.
 
@@ -180,7 +195,7 @@ npm test
 npm run test:integration
 ```
 
-Os testes de integração inicializam o schema aditivamente, iniciam o Express em uma porta temporária e verificam frontend, health check, cadastro, login, CRUD, dashboard, logout e autorização entre dois usuários. Use um banco isolado de teste, não um banco com dados importantes.
+Os testes de integração inicializam o schema aditivamente, iniciam o Express em uma porta temporária e verificam frontend, health check, cadastro, login, armazenamento do hash de senha, tokens expirados/inválidos, rate limiting, CRUD, dashboard, logout, respostas/logs sem detalhes internos e autorização entre dois usuários. Use exclusivamente o banco local descartável `TEST_DATABASE_URL`.
 
 ## Desafios técnicos
 
@@ -189,7 +204,16 @@ Os testes de integração inicializam o schema aditivamente, iniciam o Express e
 - **Filtros seguros:** parâmetros SQL são usados para valores e ordenações vêm de uma lista fixa.
 - **Migrações sem apagar dados:** a migração inicial executa em transação, usa advisory lock para evitar corrida entre inicializações e registra sua versão antes de futuras migrações aditivas.
 - **Frontend e API no mesmo domínio:** caminhos relativos evitam configurações de endpoint e builds distintos para produção.
+- **Sessões:** JWT usa HS256, issuer/audience fixos, claims verificadas e expiração máxima de oito horas; o logout incrementa `token_version`.
+- **Mensagens e logs:** respostas de falha são genéricas; logs registram somente códigos e nomes de erro filtrados, sem mensagens, stacks ou URLs de conexão.
+- **CORS:** não é necessário para o frontend same-origin e permanece desabilitado.
 - **Conexão Neon:** SSL valida o certificado com `DB_SSL=true`; pool pequeno respeita os limites de um serviço gratuito.
+
+## Auditoria de segurança
+
+A auditoria local não encontrou credenciais nos arquivos rastreados nem nos dois commits existentes; os únicos caminhos detectados pelo scanner são placeholders do `.env.example`. `.env` e arquivos usuais de credenciais são ignorados pelo Git. Um token pessoal de acesso ao GitHub foi compartilhado anteriormente no chat: revogue-o nas configurações de tokens do GitHub se ainda não tiver feito isso e crie outro apenas na interface oficial, sem compartilhá-lo.
+
+Os testes automatizados verificam controles selecionados; eles não provam que a aplicação é totalmente segura. Revise periodicamente as dependências, restrinja o usuário PostgreSQL, mantenha segredos apenas no ambiente do provedor e monitore alertas de segurança.
 
 ## Próximas melhorias
 
@@ -212,4 +236,3 @@ feat: add responsive interface
 test: cover API integration and user isolation
 docs: prepare free cloud deployment
 ```
->>>>>>> e13e798 (feat: prepare DevFlow for free cloud deployment)

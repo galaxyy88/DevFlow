@@ -1,5 +1,6 @@
 import pg from "pg";
 import { env } from "../config/env.js";
+import { logSafeError } from "../utils/safe-log.js";
 
 const { Pool } = pg;
 
@@ -12,9 +13,5 @@ export const pool = new Pool({
 });
 
 pool.on("error", (error) => {
-  if (env.NODE_ENV === "production") {
-    console.error("Erro inesperado no pool PostgreSQL:", { code: error.code });
-  } else {
-    console.error("Erro inesperado no pool PostgreSQL:", error);
-  }
+  logSafeError("Erro inesperado no pool PostgreSQL.", error);
 });

@@ -2,6 +2,9 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { pool } from "../database/pool.js";
 import { ApiError } from "../utils/api-error.js";
+import { uuidSchema } from "../utils/validation.js";
+
+const MAX_SESSION_SECONDS = 8 * 60 * 60;
 
 export async function authenticate(request, response, next) {
   const authorization = request.get("authorization");
@@ -11,10 +14,24 @@ export async function authenticate(request, response, next) {
   }
 
   try {
-    const payload = jwt.verify(authorization.slice(7), env.JWT_SECRET);
+    const payload = jwt.verify(authorization.slice(7), env.JWT_SECRET, {
+      algorithms: ["HS256"],
+      issuer: "devflow",
+      audience: "devflow",
+      maxAge: "8h"
+    });
 
-    if (typeof payload === "string" || typeof payload.sub !== "string" || !Number.isInteger(payload.version)) {
-      throw new Error("Token inválido.");
+    if (
+      typeof payload === "string" ||
+      !uuidSchema.safeParse(payload.sub).success ||
+      !Number.isInteger(payload.version) ||
+      payload.version < 0 ||
+      !Number.isInteger(payload.iat) ||
+      !Number.isInteger(payload.exp) ||
+      payload.exp <= payload.iat ||
+      payload.exp - payload.iat > MAX_SESSION_SECONDS
+    ) {
+      return next(new ApiError(401, "Sessão inválida ou expirada.", "UNAUTHORIZED"));
     }
 
     const result = await pool.query(
@@ -37,7 +54,11 @@ export async function authenticate(request, response, next) {
       return next(error);
     }
 
-    if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
+    if (
+      error.name === "JsonWebTokenError" ||
+      error.name === "TokenExpiredError" ||
+      error.name === "NotBeforeError"
+    ) {
       return next(new ApiError(401, "Sessão inválida ou expirada.", "UNAUTHORIZED"));
     }
 

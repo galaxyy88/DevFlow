@@ -1,12 +1,10 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import { env } from "./config/env.js";
 import { authenticate } from "./middleware/authenticate.js";
 import { errorHandler, notFound } from "./middleware/error-handler.js";
-import { ApiError } from "./utils/api-error.js";
 import authRoutes from "./routes/auth-routes.js";
 import dashboardRoutes from "./routes/dashboard-routes.js";
 import projectRoutes from "./routes/project-routes.js";
@@ -26,14 +24,6 @@ app.use(helmet({
       "style-src": ["'self'", "https://fonts.googleapis.com"],
       "font-src": ["'self'", "https://fonts.gstatic.com"]
     }
-  }
-}));
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || env.CLIENT_ORIGINS.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new ApiError(403, "Origem não permitida pelo CORS.", "CORS_ORIGIN_DENIED"));
   }
 }));
 app.use(express.json({ limit: "20kb" }));

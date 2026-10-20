@@ -1,4 +1,5 @@
 import { ApiError } from "../utils/api-error.js";
+import { logSafeError } from "../utils/safe-log.js";
 
 export function notFound(request, response, next) {
   next(new ApiError(404, "Recurso não encontrado.", "NOT_FOUND"));
@@ -39,11 +40,7 @@ export function errorHandler(error, request, response, next) {
     });
   }
 
-  if (process.env.NODE_ENV === "production") {
-    console.error("Erro não tratado na API:", { code: error.code });
-  } else {
-    console.error("Erro não tratado na API:", error);
-  }
+  logSafeError("Erro não tratado na API.", error);
   return response.status(500).json({
     error: { code: "INTERNAL_ERROR", message: "Ocorreu um erro interno. Tente novamente." }
   });

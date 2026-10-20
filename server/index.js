@@ -2,6 +2,7 @@ import app from "./app.js";
 import { env } from "./config/env.js";
 import { migrate } from "./database/migrate.js";
 import { pool } from "./database/pool.js";
+import { logSafeError } from "./utils/safe-log.js";
 
 let server;
 
@@ -22,11 +23,7 @@ async function shutdown() {
 }
 
 start().catch(async (error) => {
-  if (env.NODE_ENV === "production") {
-    console.error("Não foi possível iniciar o DevFlow:", { code: error.code });
-  } else {
-    console.error("Não foi possível iniciar o DevFlow:", error);
-  }
+  logSafeError("Não foi possível iniciar o DevFlow.", error);
   await shutdown();
   process.exitCode = 1;
 });
@@ -37,11 +34,7 @@ function handleShutdown() {
   if (isShuttingDown) return;
   isShuttingDown = true;
   shutdown().catch((error) => {
-    if (env.NODE_ENV === "production") {
-      console.error("Erro ao encerrar o DevFlow:", { code: error.code });
-    } else {
-      console.error("Erro ao encerrar o DevFlow:", error);
-    }
+    logSafeError("Erro ao encerrar o DevFlow.", error);
     process.exitCode = 1;
   });
 }

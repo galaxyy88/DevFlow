@@ -11,6 +11,7 @@ import {
 } from "./validation.js";
 import { completionPercent } from "./dashboard.js";
 import { getPagination } from "./pagination.js";
+import { escapeHtml } from "../../client/utils/format.js";
 
 test("normalizes email and trims user names", () => {
   const result = registerSchema.parse({
@@ -56,4 +57,11 @@ test("bounds pagination values", () => {
 test("calculates completion percentage without dividing by zero", () => {
   assert.equal(completionPercent(2, 3), 67);
   assert.equal(completionPercent(0, 0), 0);
+});
+
+test("escapes user-provided text before it is rendered as HTML", () => {
+  assert.equal(
+    escapeHtml(`<script>alert("x")</script> & 'test'`),
+    "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &#39;test&#39;"
+  );
 });
