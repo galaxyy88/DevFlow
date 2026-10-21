@@ -4,7 +4,7 @@ Plataforma full stack para pequenos times de desenvolvimento organizarem projeto
 
 ## Demonstração e screenshots
 
-**Demonstração online:** ainda não publicada. Adicione aqui a URL pública do Render depois de realizar e validar o deploy.
+**Demonstração online:** [ainda não publicada. Adicione aqui a URL pública do Render depois de realizar e validar o deploy.](https://devflow-dnkf.onrender.com/)
 
 | Dashboard | Projetos e tarefas |
 | --- | --- |
@@ -136,103 +136,3 @@ As rotas protegidas exigem `Authorization: Bearer <token>`. Datas usam `AAAA-MM-
 | `GET` | `/api/dashboard` | Indicadores e atividade |
 | `GET` | `/health` | Health check do Render e conexão com PostgreSQL |
 | `GET` | `/api/health` | Alias do health check |
-
-## Publicação gratuita: GitHub, Neon e Render
-
-### 1. Criar o PostgreSQL no Neon
-
-1. Entre no [Neon Console](https://console.neon.tech/) e escolha **Create a project**.
-2. Defina o nome e uma região próxima à região do serviço Render.
-3. Após criar, abra **Dashboard → Connect** e escolha a branch e o database do projeto.
-4. Selecione a opção **Pooled connection** para a aplicação e copie a connection string PostgreSQL que o Neon apresentar, mantendo os parâmetros TLS indicados pelo provedor.
-5. Trate essa URL como segredo: não a cole no código, README, commits ou screenshots. Ela será cadastrada como `DATABASE_URL` no Render.
-
-Confira no painel do Neon os limites atuais do plano gratuito: cotas de uso, armazenamento e suspensão por inatividade podem mudar. Mantenha cópias dos dados que não puder perder.
-
-### 2. Enviar o código ao GitHub
-
-O histórico Git existente deve ser preservado. Para preparar e enviar uma alteração revisada ao repositório GitHub já configurado, confira o estado e confirme que `.env` está ignorado:
-
-```bash
-git status --short
-git check-ignore .env
-git diff --check
-```
-
-Revise a lista de arquivos e adicione somente os arquivos pretendidos. Depois confira o conteúdo staged antes de criar e enviar o commit:
-
-```bash
-git add <arquivos-revisados>
-git diff --cached --check
-git diff --cached --stat
-git diff --cached
-git commit -m "chore: prepare DevFlow for public deployment"
-git push origin main
-```
-
-Substitua `<arquivos-revisados>` pelos caminhos que você confirmou; não adicione `.env`. Nunca coloque tokens na URL do remoto nem no histórico do terminal. O repositório não será enviado automaticamente por estes passos.
-
-### 3. Criar o serviço no Render
-
-1. Abra o [Render Dashboard](https://dashboard.render.com/) e selecione **New + → Blueprint**.
-2. Conecte o GitHub, selecione seu repositório `DevFlow` e a branch `main`.
-3. Revise o `render.yaml` e clique em **Apply**. O Blueprint cria um web service gratuito, instala com `npm ci`, inicia com `npm start` e verifica `/health`.
-4. Na tela de configuração/ambiente, preencha `DATABASE_URL` com a URL copiada do Neon. É uma variável `sync: false`, portanto não está gravada no Blueprint.
-5. Confirme `NODE_ENV=production`, `DB_SSL=true` e o `JWT_SECRET` gerado pelo próprio Render a partir de `generateValue: true`. Nunca compartilhe o valor do segredo.
-6. Salve e inicie o primeiro deploy. O Render fornece automaticamente `PORT`. O serviço serve frontend e API pelo mesmo domínio, portanto o CORS fica desativado.
-7. O Blueprint usa `autoDeploy: false`: depois de enviar um commit ao GitHub, abra o serviço no Render e escolha **Manual Deploy → Deploy latest commit** para iniciar o deploy explicitamente. Isso permite revisar o commit antes de publicar.
-
-O Render pode suspender serviços gratuitos inativos e a primeira requisição após a suspensão pode demorar. Confira quotas e limitações atuais de Render e Neon no painel dos provedores.
-
-### 4. Encontrar e testar o link público
-
-No painel do Render, abra o serviço e copie a URL pública mostrada no cabeçalho, normalmente terminada em `onrender.com`. Abra a URL, crie uma conta, entre, crie/edite/exclua projetos e tarefas e confirme o dashboard. Verifique também `https://<URL-PUBLICA-DO-SERVICO>/health`, que deve responder `{"status":"ok"}`.
-
-## Testes
-
-```bash
-npm test
-npm run test:integration
-```
-
-Os testes de integração inicializam o schema aditivamente, iniciam o Express em uma porta temporária e verificam frontend, health check, cadastro, login, armazenamento do hash de senha, tokens expirados/inválidos, rate limiting, CRUD, dashboard, logout, respostas/logs sem detalhes internos e autorização entre dois usuários. Use exclusivamente o banco local descartável `TEST_DATABASE_URL`.
-
-## Desafios técnicos
-
-- **Isolamento por proprietário:** cada consulta de projeto e tarefa confere o usuário proprietário no próprio SQL.
-- **Logout de JWT:** `token_version` no PostgreSQL invalida sessões existentes sem armazenar tokens.
-- **Filtros seguros:** parâmetros SQL são usados para valores e ordenações vêm de uma lista fixa.
-- **Migrações sem apagar dados:** a migração inicial executa em transação, usa advisory lock para evitar corrida entre inicializações e registra sua versão antes de futuras migrações aditivas.
-- **Frontend e API no mesmo domínio:** caminhos relativos evitam configurações de endpoint e builds distintos para produção.
-- **Sessões:** JWT usa HS256, issuer/audience fixos, claims verificadas e expiração máxima de oito horas; o logout incrementa `token_version`.
-- **Mensagens e logs:** respostas de falha são genéricas; logs registram somente códigos e nomes de erro filtrados, sem mensagens, stacks ou URLs de conexão.
-- **CORS:** não é necessário para o frontend same-origin e permanece desabilitado.
-- **Conexão Neon:** SSL valida o certificado com `DB_SSL=true`; pool pequeno respeita os limites de um serviço gratuito.
-
-## Auditoria de segurança
-
-A auditoria local não encontrou credenciais nos arquivos rastreados nem nos dois commits existentes; os únicos caminhos detectados pelo scanner são placeholders do `.env.example`. `.env` e arquivos usuais de credenciais são ignorados pelo Git. Um token pessoal de acesso ao GitHub foi compartilhado anteriormente no chat: revogue-o nas configurações de tokens do GitHub se ainda não tiver feito isso e crie outro apenas na interface oficial, sem compartilhá-lo.
-
-Os testes automatizados verificam controles selecionados; eles não provam que a aplicação é totalmente segura. Revise periodicamente as dependências, restrinja o usuário PostgreSQL, mantenha segredos apenas no ambiente do provedor e monitore alertas de segurança.
-
-## Próximas melhorias
-
-- Capturar e publicar screenshots reais e adicionar o link de demonstração depois do deploy.
-- Adicionar exportação de dados e documentação OpenAPI.
-- Considerar atribuição de tarefas, membros e permissões por equipe.
-
-## Aprendizados
-
-O projeto demonstra HTTP/REST, autenticação, autorização por proprietário, PostgreSQL, migrações, frontend responsivo, configuração de ambiente e preparação para deploy com serviços gerenciados.
-
-## Sequência sugerida de commits
-
-```text
-feat: create authentication system
-feat: add project management
-feat: add task management
-feat: create dashboard
-feat: add responsive interface
-test: cover API integration and user isolation
-docs: prepare free cloud deployment
-```
