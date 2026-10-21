@@ -4,7 +4,7 @@ Plataforma full stack para pequenos times de desenvolvimento organizarem projeto
 
 ## Demonstração e screenshots
 
-**Demonstração online:** [ainda não publicada. Adicione aqui a URL pública do Render depois de realizar e validar o deploy.](https://devflow-dnkf.onrender.com/)
+**Demonstração online:** (https://devflow-dnkf.onrender.com/)
 
 | Dashboard | Projetos e tarefas |
 | --- | --- |
